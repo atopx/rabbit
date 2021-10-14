@@ -133,6 +133,7 @@ func (c *Client) NewPublish(msg amqp.Publishing) error {
 }
 
 func (c *Client) Close() {
+	c.consumer.quit <- true
 	_ = c.channel.Close()
 	_ = connect.Close()
 }
