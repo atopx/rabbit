@@ -78,14 +78,14 @@ func (c *Client) connect(name string, bind bool) (err error) {
 	if err != nil {
 		return err
 	}
-	queue, err := c.channel.QueueDeclare(name, true, false, false, false, nil)
+	queue, err := c.channel.QueueDeclare(name, true, false, false, false, c.args)
 	if err != nil {
 		return err
 	}
 	c.queue = queue
 	if bind {
 		c.exchange = name
-		if err = c.channel.QueueBind(name, name, name, false, nil); err != nil {
+		if err = c.channel.QueueBind(name, name, name, false, c.args); err != nil {
 			return err
 		}
 	}
@@ -121,10 +121,9 @@ func (c *Client) startConsumer() {
 	c.logger.Debug("stop consumer event")
 }
 
-func (c *Client) NewConsumer(callback func(delivery amqp.Delivery), autoack bool, args amqp.Table) {
+func (c *Client) NewConsumer(callback func(delivery amqp.Delivery), autoack bool) {
 	c.consumer = consumer{callback: callback, quit: make(chan bool, 1)}
 	c.autoack = autoack
-	c.args = args
 	c.startConsumer()
 }
 
@@ -145,7 +144,7 @@ func (c *Client) Close() {
 	_ = connect.Close()
 }
 
-func New(url, queue string, bind bool, config *amqp.Config, logger *zap.Logger) (*Client, error) {
+func New(url, queue string, bind bool, args amqp.Table, config *amqp.Config, logger *zap.Logger) (*Client, error) {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
@@ -154,6 +153,7 @@ func New(url, queue string, bind bool, config *amqp.Config, logger *zap.Logger) 
 		logger: logger,
 		url:    url,
 		config: config,
+		args:   args,
 	}
 	if err := c.connect(queue, bind); err != nil {
 		return nil, err
