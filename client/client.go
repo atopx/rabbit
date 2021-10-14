@@ -111,13 +111,6 @@ func open(url string, config *amqp.Config) (conn *amqp.Connection, ch *amqp.Chan
 	return conn, ch, nil
 }
 
-func (c *Client) NewConsumer(callback func(delivery amqp.Delivery), autoack bool, args amqp.Table) {
-	c.consumer = consumer{callback: callback, quit: make(chan bool, 1)}
-	c.autoack = autoack
-	c.args = args
-	c.startConsumer()
-}
-
 func (c *Client) startConsumer() {
 	c.Delivery, _ = c.channel.Consume(c.queue.Name, c.exchange, c.autoack, false, false, false, c.args)
 	for delivery := range c.Delivery {
@@ -128,8 +121,20 @@ func (c *Client) startConsumer() {
 	c.logger.Debug("stop consumer event")
 }
 
+func (c *Client) NewConsumer(callback func(delivery amqp.Delivery), autoack bool, args amqp.Table) {
+	c.consumer = consumer{callback: callback, quit: make(chan bool, 1)}
+	c.autoack = autoack
+	c.args = args
+	c.startConsumer()
+}
+
 func (c *Client) NewPublish(msg amqp.Publishing) error {
 	return c.channel.Publish(c.exchange, c.queue.Name, false, false, msg)
+}
+
+func (c *Client) Clear(nowait bool) error {
+	_, err := c.channel.QueuePurge(c.queue.Name, nowait)
+	return err
 }
 
 func (c *Client) Close() {
